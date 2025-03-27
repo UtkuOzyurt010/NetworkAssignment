@@ -39,13 +39,13 @@ class ServerUDP
 
 
 
-    public static void start()
+    public static void start() 
     {
 
 
         // TODO: [Create a socket and endpoints and bind it to the server IP address and port number]
-
-
+        IPEndPoint serverEndPoint = new IPEndPoint(IPAddress.Parse(setting.ServerIPAddress), setting.ServerPortNumber);
+        Socket ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
         // TODO:[Receive and print a received Message from the client]
 

@@ -10,3 +10,10 @@
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+*obj
+*bin
+server/obj/
+server/bin/
+client/obj/
+client/bin/
