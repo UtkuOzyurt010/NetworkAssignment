@@ -45,7 +45,12 @@ class ClientUDP
 
         //TODO: [Create and send HELLO]
         //{ “MsgId”: “1” , ”MsgType": "Hello", "Content": “Hello fromclient” }
-        clientSocket.SendTo();
+        Message hello_message = new Message();
+        hello_message.MsgId = 1;
+        hello_message.MsgType = MessageType.Hello;
+        hello_message.Content = "Hello fromclient";
+        var hello_json = JsonSerializer.Serialize(hello_message);
+        clientSocket.SendTo(Encoding.UTF8.GetBytes(hello_json), serverEndPoint);
 
         //TODO: [Receive and print Welcome from server]
 
