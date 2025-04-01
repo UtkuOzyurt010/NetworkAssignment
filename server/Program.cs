@@ -16,13 +16,13 @@ class Program
     static void Main(string[] args)
     {
         if(!ServerUDP.start()){
-            Console.WriteLine("Server initialization failed. Ending protocol");
+            Console.WriteLine("start step (Server initialization) failed. Ending protocol");
             return;
         }
-        if(!ServerUDP.ReceiveAny()){
-            Console.WriteLine("ReceiveAny step failed. Ending protocol");
-            return;
-        }
+        // if(!ServerUDP.ReceiveAny()){
+        //     Console.WriteLine("ReceiveAny step failed. Ending protocol");
+        //     return;
+        // }
         if(!ServerUDP.ReceiveHello()){
             Console.WriteLine("ReceiveHello step failed. Ending protocol");
             return;
@@ -105,20 +105,20 @@ class ServerUDP
 
     }
 
-    public static bool ReceiveAny()
-    {
-        // TODO:[Receive and print a received Message from the client]
-        byte[] buffer = new byte[1024];
-        int receivedBytesCount = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
-        string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytesCount);
-        Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
-        if(receivedMessage is null){
-            Console.WriteLine("A message object was expected but not received.");
-            return false;
-        }
-        Console.WriteLine($"Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
-        return true;
-    }
+    // public static bool ReceiveAny()
+    // {
+    //     // TODO:[Receive and print a received Message from the client]
+    //     byte[] buffer = new byte[1024];
+    //     int receivedBytesCount = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
+    //     string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytesCount);
+    //     Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
+    //     if(receivedMessage is null){
+    //         Console.WriteLine("ReceiveAny(): A message object was expected but not received.");
+    //         return false;
+    //     }
+    //     Console.WriteLine($"ReceiveAny(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
+    //     return true;
+    // }
     public static bool ReceiveHello()
     {
         // TODO:[Receive and print Hello]
@@ -127,14 +127,14 @@ class ServerUDP
         string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytesCount);
         Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
         if(receivedMessage is null){
-            Console.WriteLine("A message object was expected but not received.");
+            Console.WriteLine("ReceiveHello(): A message object was expected but not received.");
             return false;
         }
         if(receivedMessage.MsgType != MessageType.Hello){
-            Console.WriteLine("The received message was not of type MessageType.Hello.");
+            Console.WriteLine("ReceiveHello(): The received message was not of type MessageType.Hello.");
             return false;
         }
-        Console.WriteLine($"Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
+        Console.WriteLine($"ReceiveHello(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
         return true;
 
     }
@@ -145,9 +145,9 @@ class ServerUDP
 //         { “MsgId”: “4” , “MsgType”: "Welcome", “Content": “Welcome
 // from server”}
         Message welcomeMessage = new Message();
-        welcomeMessage.MsgId = 1;
-        welcomeMessage.MsgType = MessageType.Hello;
-        welcomeMessage.Content = "Hello fromclient";
+        welcomeMessage.MsgId = 4;
+        welcomeMessage.MsgType = MessageType.Welcome;
+        welcomeMessage.Content = "Welcome from server";
         var welcomeJson = JsonSerializer.Serialize(welcomeMessage);
 
         
