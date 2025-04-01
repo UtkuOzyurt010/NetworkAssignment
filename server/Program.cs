@@ -15,7 +15,52 @@ class Program
 {
     static void Main(string[] args)
     {
-        ServerUDP.start();
+        if(!ServerUDP.start()){
+            Console.WriteLine("Server initialization failed. Ending protocol");
+            return;
+        }
+        if(!ServerUDP.ReceiveAny()){
+            Console.WriteLine("ReceiveAny step failed. Ending protocol");
+            return;
+        }
+        if(!ServerUDP.ReceiveHello()){
+            Console.WriteLine("ReceiveHello step failed. Ending protocol");
+            return;
+        }
+        if(!ServerUDP.SendWelcome()){
+            Console.WriteLine("SendWelcome step failed. Ending protocol");
+            return;
+        }
+        if(!ServerUDP.ReceiveAndPrintDNSLookup()){
+            Console.WriteLine("ReceiveAndPrintDNSLookup step failed. Ending protocol");
+            return;
+        }
+
+        if(!ServerUDP.QueryDNSRecord()){
+            Console.WriteLine("DNSRecord not found, sending DNSNotFoundError");
+            if(!ServerUDP.SendDNSNotFoundError()){
+                Console.WriteLine("SendDNSNotFoundError step failed. Ending protocol");
+                return;
+            }
+            Console.WriteLine("SendDNSNotFoundError step succesful. Ending protocol");
+            return;
+        }
+        else{
+            Console.WriteLine("DNSRecord found, sending DNSReply");
+            if(!ServerUDP.SendDNSReply())
+            {
+                Console.WriteLine("SendDNSReply step failed. Ending protocol");
+                return;
+            }
+        }
+        if(!ServerUDP.ReceiveAck()){
+            Console.WriteLine("ReceiveHello step failed. Ending protocol");
+            return;
+        }
+        if(!ServerUDP.SendEnd()){
+            Console.WriteLine("ReceiveHello step failed. Ending protocol");
+            return;
+        }
     }
 }
 
@@ -55,7 +100,8 @@ class ServerUDP
         serverSocket.ReceiveTimeout = 10000; // so it doesn't unexpectedly block
 
         clientEndPoint = new IPEndPoint(IPAddress.Parse(setting.ClientIPAddress), setting.ClientPortNumber);
-    
+
+        return true;
 
     }
 
