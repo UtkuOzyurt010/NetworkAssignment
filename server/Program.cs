@@ -28,6 +28,8 @@ public class Setting
 }
 
 
+
+
 class ServerUDP
 {
     static string configFile = @"../Setting.json";
@@ -47,8 +49,15 @@ class ServerUDP
         IPEndPoint serverEndPoint = new IPEndPoint(IPAddress.Parse(setting.ServerIPAddress), setting.ServerPortNumber);
         Socket ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
-        // TODO:[Receive and print a received Message from the client]
+        EndPoint clientEndPoint = new IPEndPoint(IPAddress.Parse(setting.ClientIPAddress), setting.ClientPortNumber);
 
+        byte[] buffer = new byte[1024];
+        // TODO:[Receive and print a received Message from the client]
+        int receivedBytesCount = ServerSocket.ReceiveFrom(buffer, ref clientEndPoint);
+        string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytesCount);
+        Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
+
+        Console.WriteLine($"Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} ");
 
 
 
