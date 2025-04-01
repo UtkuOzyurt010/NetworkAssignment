@@ -36,56 +36,113 @@ class ServerUDP
     static string configContent = File.ReadAllText(configFile);
     static Setting? setting = JsonSerializer.Deserialize<Setting>(configContent);
 
+    static IPEndPoint serverEndPoint;
+    static Socket serverSocket;
+    static EndPoint clientEndPoint;
+
+
     // TODO: [Read the JSON file and return the list of DNSRecords]
 
-
-
-
-    public static void start() 
+    public static bool start() 
     {
-
-
+        
         // TODO: [Create a socket and endpoints and bind it to the server IP address and port number]
-        IPEndPoint serverEndPoint = new IPEndPoint(IPAddress.Parse(setting.ServerIPAddress), setting.ServerPortNumber);
-        Socket ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        serverEndPoint = new IPEndPoint(IPAddress.Parse(setting.ServerIPAddress), setting.ServerPortNumber);
+        serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        serverSocket.Bind(serverEndPoint);
 
-        EndPoint clientEndPoint = new IPEndPoint(IPAddress.Parse(setting.ClientIPAddress), setting.ClientPortNumber);
+        serverSocket.SendTimeout = 10000; // so it doesn't unexpectedly block
+        serverSocket.ReceiveTimeout = 10000; // so it doesn't unexpectedly block
 
-        byte[] buffer = new byte[1024];
-        // TODO:[Receive and print a received Message from the client]
-        int receivedBytesCount = ServerSocket.ReceiveFrom(buffer, ref clientEndPoint);
-        string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytesCount);
-        Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
-
-        Console.WriteLine($"Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} ");
-
-
-
-        // TODO:[Receive and print Hello]
-
-
-
-        // TODO:[Send Welcome to the client]
-
-
-        // TODO:[Receive and print DNSLookup]
-
-
-        // TODO:[Query the DNSRecord in Json file]
-
-        // TODO:[If found Send DNSLookupReply containing the DNSRecord]
-
-
-
-        // TODO:[If not found Send Error]
-
-
-        // TODO:[Receive Ack about correct DNSLookupReply from the client]
-
-
-        // TODO:[If no further requests receieved send End to the client]
+        clientEndPoint = new IPEndPoint(IPAddress.Parse(setting.ClientIPAddress), setting.ClientPortNumber);
+    
 
     }
 
+    public static bool ReceiveAny()
+    {
+        // TODO:[Receive and print a received Message from the client]
+        byte[] buffer = new byte[1024];
+        int receivedBytesCount = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
+        string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytesCount);
+        Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
+        if(receivedMessage is null){
+            Console.WriteLine("A message object was expected but not received.");
+            return false;
+        }
+        Console.WriteLine($"Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
+        return true;
+    }
+    public static bool ReceiveHello()
+    {
+        // TODO:[Receive and print Hello]
+        byte[] buffer = new byte[1024];
+        int receivedBytesCount = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
+        string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytesCount);
+        Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
+        if(receivedMessage is null){
+            Console.WriteLine("A message object was expected but not received.");
+            return false;
+        }
+        if(receivedMessage.MsgType != MessageType.Hello){
+            Console.WriteLine("The received message was not of type MessageType.Hello.");
+            return false;
+        }
+        Console.WriteLine($"Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
+        return true;
 
+    }
+
+    // TODO:[Send Welcome to the client]
+    public static bool SendWelcome()
+    {
+//         { “MsgId”: “4” , “MsgType”: "Welcome", “Content": “Welcome
+// from server”}
+        Message welcomeMessage = new Message();
+        welcomeMessage.MsgId = 1;
+        welcomeMessage.MsgType = MessageType.Hello;
+        welcomeMessage.Content = "Hello fromclient";
+        var welcomeJson = JsonSerializer.Serialize(welcomeMessage);
+
+        
+        serverSocket.SendTo(Encoding.UTF8.GetBytes(welcomeJson), clientEndPoint);
+        return true;
+    }
+
+    // TODO:[Receive and print DNSLookup]
+    public static bool ReceiveAndPrintDNSLookup()
+    {
+        return true;
+    }
+
+    // TODO:[Query the DNSRecord in Json file]
+    public static bool QueryDNSRecord()
+    {
+        return true;
+    }
+
+    // TODO:[If found Send DNSLookupReply containing the DNSRecord]
+    public static bool SendDNSReply()
+    {
+        return true;
+    }
+
+    // TODO:[If not found Send Error]
+    public static bool SendDNSNotFoundError()
+    {
+        return true;
+    }
+
+    // TODO:[Receive Ack about correct DNSLookupReply from the client]
+    public static bool ReceiveAck()
+    {
+        return true;
+    }
+
+    // TODO:[If no further requests receieved send End to the client]
+    public static bool SendEnd()
+    {
+        
+        return true;
+    }
 }
