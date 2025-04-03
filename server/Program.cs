@@ -15,52 +15,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        if(!ServerUDP.start()){
-            Console.WriteLine("start step (Server initialization) failed. Ending protocol");
-            return;
-        }
-        // if(!ServerUDP.ReceiveAny()){
-        //     Console.WriteLine("ReceiveAny step failed. Ending protocol");
-        //     return;
-        // }
-        if(!ServerUDP.ReceiveHello()){
-            Console.WriteLine("ReceiveHello step failed. Ending protocol");
-            return;
-        }
-        if(!ServerUDP.SendWelcome()){
-            Console.WriteLine("SendWelcome step failed. Ending protocol");
-            return;
-        }
-        if(!ServerUDP.ReceiveAndPrintDNSLookup()){
-            Console.WriteLine("ReceiveAndPrintDNSLookup step failed. Ending protocol");
-            return;
-        }
-
-        if(!ServerUDP.QueryDNSRecord()){
-            Console.WriteLine("DNSRecord not found, sending DNSNotFoundError");
-            if(!ServerUDP.SendDNSNotFoundError()){
-                Console.WriteLine("SendDNSNotFoundError step failed. Ending protocol");
-                return;
-            }
-            Console.WriteLine("SendDNSNotFoundError step succesful. Ending protocol");
-            return;
-        }
-        else{
-            Console.WriteLine("DNSRecord found, sending DNSReply");
-            if(!ServerUDP.SendDNSReply())
-            {
-                Console.WriteLine("SendDNSReply step failed. Ending protocol");
-                return;
-            }
-        }
-        if(!ServerUDP.ReceiveAck()){
-            Console.WriteLine("ReceiveHello step failed. Ending protocol");
-            return;
-        }
-        if(!ServerUDP.SendEnd()){
-            Console.WriteLine("ReceiveHello step failed. Ending protocol");
-            return;
-        }
+        ServerUDP.start();
     }
 }
 
@@ -73,79 +28,113 @@ public class Setting
 }
 
 
-
-
 class ServerUDP
 {
     static string configFile = @"../Setting.json";
     static string configContent = File.ReadAllText(configFile);
     static Setting? setting = JsonSerializer.Deserialize<Setting>(configContent);
 
-    static IPEndPoint serverEndPoint;
-    static Socket serverSocket;
-    static EndPoint clientEndPoint;
+    static IPEndPoint? serverEndPoint;    
+    static Socket? serverSocket;
+    
+    static EndPoint? clientEndPoint;
 
 
     // TODO: [Read the JSON file and return the list of DNSRecords]
+    static List<DNSRecord>? DNSRecords = JsonSerializer.Deserialize<List<DNSRecord>>(File.ReadAllText("./DNSrecords.json"));
 
-    public static bool start() 
+    public static void start() 
     {
-        
         // TODO: [Create a socket and endpoints and bind it to the server IP address and port number]
         serverEndPoint = new IPEndPoint(IPAddress.Parse(setting.ServerIPAddress), setting.ServerPortNumber);
         serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        clientEndPoint = new IPEndPoint(IPAddress.Parse(setting.ClientIPAddress), setting.ClientPortNumber);
         serverSocket.Bind(serverEndPoint);
-
         serverSocket.SendTimeout = 10000; // so it doesn't unexpectedly block
         serverSocket.ReceiveTimeout = 10000; // so it doesn't unexpectedly block
 
-        clientEndPoint = new IPEndPoint(IPAddress.Parse(setting.ClientIPAddress), setting.ClientPortNumber);
+        byte[] buffer = new byte[1024];
 
-        return true;
+        while (true)
+        {
+            try
+            {
+                clientEndPoint = new IPEndPoint(IPAddress.Any, 0);
+                EndPoint remoteEndPoint = (EndPoint)clientEndPoint;
 
+                // Receive message from client
+                int receivedBytes = serverSocket.ReceiveFrom(buffer, ref remoteEndPoint);
+                string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytes);
+                Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
+
+                if (receivedMessage == null)
+                {
+                    Console.WriteLine("Error: Received invalid message.");
+                    continue;
+                }
+
+                Console.WriteLine($"Received from {remoteEndPoint}: {receivedMessage.MsgType}");
+
+                switch (receivedMessage.MsgType)
+                {
+                    case MessageType.Hello:
+                        SendWelcome(receivedMessage);
+                        break;
+
+                    case MessageType.DNSLookup:
+                        if (receivedMessage.Content is not string domain)
+                        {
+                            SendMessage(remoteEndPoint, new Message { MsgId = receivedMessage.MsgId, MsgType = MessageType.Error, Content = "Invalid DNSLookup request" });
+                            break;
+                        }
+
+                        DNSRecord? record = DNSRecords.Find(d => d.Name.Equals(domain, StringComparison.OrdinalIgnoreCase));
+                        if (record != null)
+                        {
+                            SendMessage(remoteEndPoint, new Message { MsgId = receivedMessage.MsgId, MsgType = MessageType.DNSLookupReply, Content = record });
+                        }
+                        else
+                        {
+                            SendMessage(remoteEndPoint, new Message { MsgId = receivedMessage.MsgId, MsgType = MessageType.Error, Content = "Domain not found" });
+                        }
+                        break;
+
+                    case MessageType.Ack:
+                        Console.WriteLine("Client acknowledged the response.");
+                        break;
+
+                    case MessageType.End:
+                        Console.WriteLine("Client has ended communication.");
+                        serverSocket.Close();
+                        return;
+
+                    default:
+                        Console.WriteLine("Received unknown message type.");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+        }
     }
 
-    // public static bool ReceiveAny()
-    // {
-    //     // TODO:[Receive and print a received Message from the client]
-    //     byte[] buffer = new byte[1024];
-    //     int receivedBytesCount = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
-    //     string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytesCount);
-    //     Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
-    //     if(receivedMessage is null){
-    //         Console.WriteLine("ReceiveAny(): A message object was expected but not received.");
-    //         return false;
-    //     }
-    //     Console.WriteLine($"ReceiveAny(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
-    //     return true;
-    // }
     public static bool ReceiveHello()
     {
-        // TODO:[Receive and print Hello]
-        byte[] buffer = new byte[1024];
-        int receivedBytesCount = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
-        string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytesCount);
-        Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
-        if(receivedMessage is null){
-            Console.WriteLine("ReceiveHello(): A message object was expected but not received.");
-            return false;
-        }
-        if(receivedMessage.MsgType != MessageType.Hello){
-            Console.WriteLine("ReceiveHello(): The received message was not of type MessageType.Hello.");
-            return false;
-        }
+
         Console.WriteLine($"ReceiveHello(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
         return true;
 
     }
 
     // TODO:[Send Welcome to the client]
-    public static bool SendWelcome()
+    public static bool SendWelcome(Message receivedmessage)
     {
 //         { “MsgId”: “4” , “MsgType”: "Welcome", “Content": “Welcome
 // from server”}
         Message welcomeMessage = new Message();
-        welcomeMessage.MsgId = 4;
+        welcomeMessage.MsgId = receivedmessage.MsgId;
         welcomeMessage.MsgType = MessageType.Welcome;
         welcomeMessage.Content = "Welcome from server";
         var welcomeJson = JsonSerializer.Serialize(welcomeMessage);
@@ -158,6 +147,19 @@ class ServerUDP
     // TODO:[Receive and print DNSLookup]
     public static bool ReceiveAndPrintDNSLookup()
     {
+        byte[] buffer = new byte[1024];
+        int receivedBytesCount = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
+        string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytesCount);
+        Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
+        if(receivedMessage is null){
+            Console.WriteLine("ReceiveAndPrintDNSLookup(): A message object was expected but not received.");
+            return false;
+        }
+        if(receivedMessage.MsgType != MessageType.DNSLookup){
+            Console.WriteLine("ReceiveAndPrintDNSLookup(): The received message was not of type MessageType.DNSLookup.");
+            return false;
+        }
+        Console.WriteLine($"ReceiveAndPrintDNSLookup(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from Client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
         return true;
     }
 
