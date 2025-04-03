@@ -60,10 +60,9 @@ class ServerUDP
             try
             {
                 clientEndPoint = new IPEndPoint(IPAddress.Any, 0);
-                EndPoint remoteEndPoint = (EndPoint)clientEndPoint;
 
                 // Receive message from client
-                int receivedBytes = serverSocket.ReceiveFrom(buffer, ref remoteEndPoint);
+                int receivedBytes = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
                 string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytes);
                 Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
 
@@ -73,30 +72,22 @@ class ServerUDP
                     continue;
                 }
 
-                Console.WriteLine($"Received from {remoteEndPoint}: {receivedMessage.MsgType}");
+                Console.WriteLine($"Received from {clientEndPoint}: {receivedMessage.MsgType}");
 
                 switch (receivedMessage.MsgType)
                 {
                     case MessageType.Hello:
-                        SendWelcome(receivedMessage);
+                        ReceiveHello(receivedMessage);
+                        SendMessage(new Message
+                        {
+                            MsgId = receivedMessage.MsgId,
+                            MsgType = MessageType.Welcome,
+                            Content = "Welcome to the server!"
+                        });
                         break;
 
                     case MessageType.DNSLookup:
-                        if (receivedMessage.Content is not string domain)
-                        {
-                            SendMessage(remoteEndPoint, new Message { MsgId = receivedMessage.MsgId, MsgType = MessageType.Error, Content = "Invalid DNSLookup request" });
-                            break;
-                        }
-
-                        DNSRecord? record = DNSRecords.Find(d => d.Name.Equals(domain, StringComparison.OrdinalIgnoreCase));
-                        if (record != null)
-                        {
-                            SendMessage(remoteEndPoint, new Message { MsgId = receivedMessage.MsgId, MsgType = MessageType.DNSLookupReply, Content = record });
-                        }
-                        else
-                        {
-                            SendMessage(remoteEndPoint, new Message { MsgId = receivedMessage.MsgId, MsgType = MessageType.Error, Content = "Domain not found" });
-                        }
+                        ProcessDNSLookup(receivedMessage);
                         break;
 
                     case MessageType.Ack:
@@ -120,27 +111,78 @@ class ServerUDP
         }
     }
 
-    public static bool ReceiveHello()
+    public static bool ReceiveHello(Message receivedmessage)
     {
-
-        Console.WriteLine($"ReceiveHello(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
+        Console.WriteLine($"ReceiveHello(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedmessage.Content} ");
         return true;
+    }
 
+    public static void ProcessDNSLookup(Message receivedMessage)
+    {
+        if (receivedMessage.Content is not JsonElement jsonElement)
+        {
+            SendMessage(new Message
+            {
+                MsgId = receivedMessage.MsgId,
+                MsgType = MessageType.Error,
+                Content = "Invalid DNSLookup request format"
+            });
+            return;
+        }
+
+        // Extract Type and Name from the received JSON object
+        string? queryType = jsonElement.GetProperty("Type").GetString();
+        string? queryName = jsonElement.GetProperty("Name").GetString();
+
+        if (string.IsNullOrEmpty(queryType) || string.IsNullOrEmpty(queryName))
+        {
+            SendMessage(new Message
+            {
+                MsgId = receivedMessage.MsgId,
+                MsgType = MessageType.Error,
+                Content = "Missing Type or Name in DNSLookup request"
+            });
+            return;
+        }
+
+        // Search for a matching DNS record in the loaded JSON data
+        DNSRecord? record = DNSRecords.Find(d => d.Type.Equals(queryType, StringComparison.OrdinalIgnoreCase) &&
+                                                d.Name.Equals(queryName, StringComparison.OrdinalIgnoreCase));
+
+        if (record != null)
+        {
+            // Found a matching DNS record
+            SendMessage(new Message
+            {
+                MsgId = receivedMessage.MsgId, // Keep original MsgId
+                MsgType = MessageType.DNSLookupReply,
+                Content = record
+            });
+        }
+        else
+        {
+            // No matching DNS record found
+            SendMessage(new Message
+            {
+                MsgId = receivedMessage.MsgId, // Keep original MsgId
+                MsgType = MessageType.Error,
+                Content = $"No DNS record found for {queryName} with type {queryType}"
+            });
+        }
     }
 
     // TODO:[Send Welcome to the client]
-    public static bool SendWelcome(Message receivedmessage)
+    public static bool SendMessage(Message message)
     {
-//         { “MsgId”: “4” , “MsgType”: "Welcome", “Content": “Welcome
-// from server”}
-        Message welcomeMessage = new Message();
-        welcomeMessage.MsgId = receivedmessage.MsgId;
-        welcomeMessage.MsgType = MessageType.Welcome;
-        welcomeMessage.Content = "Welcome from server";
-        var welcomeJson = JsonSerializer.Serialize(welcomeMessage);
-
-        
-        serverSocket.SendTo(Encoding.UTF8.GetBytes(welcomeJson), clientEndPoint);
+        try
+        {
+            string jsonMessage = JsonSerializer.Serialize(message);
+            serverSocket?.SendTo(Encoding.UTF8.GetBytes(jsonMessage), clientEndPoint);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending message: {ex.Message}");
+        }
         return true;
     }
 
