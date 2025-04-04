@@ -157,6 +157,11 @@ class ClientUDP
             Console.WriteLine("ReceiveDNSLookupReply(): A message object was expected but not received.");
             return false;
         }
+        if (receivedMessage.MsgType == MessageType.End)
+        {
+            Console.WriteLine("ReceiveDNSLookupReply(): The received message was of type MessageType.End. Ending protocol.");
+            return false;
+        }
         if(receivedMessage.MsgType == MessageType.DNSLookupReply){
             Console.WriteLine($"ReceiveDNSLookupReply(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} a DNSLookupReply:{receivedMessage.Content} ");
             receivedDNSMsgId = receivedMessage.MsgId;

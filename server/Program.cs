@@ -55,18 +55,19 @@ class ServerUDP
         //serverSocket.SendTimeout = 10000; // so it doesn't unexpectedly block
         //serverSocket.ReceiveTimeout = 10000; // so it doesn't unexpectedly block
 
+
         // TODO:[Receive and print a received Message from the client]
-       /*  byte[] buffer = new byte[1024];
-        int receivedBytes = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
-        string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytes);
-        Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
+        /*  byte[] buffer = new byte[1024];
+            int receivedBytes = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
+            string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytes);
+            Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
 
-        if (receivedMessage == null)
-        {
-            Console.WriteLine("Error: Received invalid message.");
-        }
+            if (receivedMessage == null)
+            {
+                Console.WriteLine("Error: Received invalid message.");
+            }
 
-        Console.WriteLine($"Received from {clientEndPoint}: {receivedMessage.MsgType}"); */
+            Console.WriteLine($"Received from {clientEndPoint}: {receivedMessage.MsgType}"); */
 
         // TODO:[Receive and print Hello]
         if (!ReceiveHello())
