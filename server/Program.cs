@@ -261,20 +261,15 @@ class ServerUDP
             Console.WriteLine("ReceiveAck(): The received message was not of type MessageType.Ack.");
             return false;
         }
-        if(receivedMessage.Content is not string){
-            Console.WriteLine("ReceiveAck(): The received message did not have Content of type string");
+        if(receivedMessage.Content.ToString() != DNSMsgId.ToString()){
+            Console.WriteLine("ReceiveAck(): The received MsgId did not match the MsgId of the DNSLookupReply that was sent.");
             return false;
         }
         else{
-            if(receivedMessage.Content.ToString() != DNSMsgId.ToString()){
-                Console.WriteLine("ReceiveAck(): The received MsgId did not match the MsgId of the DNSLookupReply that was sent.");
-                return false;
-            }
-            else{
-                Console.WriteLine("ReceiveAck(): The received MsgId matched the MsgId of the DNSLookupReply that was sent.");
-                return true;
-            }
+            Console.WriteLine($"ReceiveAck(): The received MsgId({receivedMessage.Content}) matched the MsgId of the DNSLookupReply({DNSMsgId}) that was sent.");
+            return true;
         }
+
     }
 
     // TODO:[If no further requests receieved send End to the client]
