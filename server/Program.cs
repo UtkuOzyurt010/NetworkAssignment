@@ -126,6 +126,10 @@ class ServerUDP
                     Console.WriteLine("ProcessDNSLookup step failed. trying next DNSLookup.");
                     endConnection = true;
                     ResponseCount++;
+                    if (ResponseCount == 4){
+                            Console.WriteLine("No more DNSLookups expected. ending connection.");
+                            break;
+                        }
                     continue;
                 }
                 // TODO:[Receive Ack about correct DNSLookupReply from the client]
@@ -134,6 +138,12 @@ class ServerUDP
                     if(!ReceiveAck())
                     {
                         Console.WriteLine("ReceiveAck step failed. trying next DNSLookup.");
+                        endConnection = true;
+                        ResponseCount++;
+                        if (ResponseCount == 4){
+                            Console.WriteLine("No mroe DNSLookups expected. ending connection. WAiting for next client");
+                            break;
+                        }
                         continue;
                     }
                 }
