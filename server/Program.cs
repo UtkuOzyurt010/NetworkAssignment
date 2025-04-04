@@ -179,11 +179,10 @@ class ServerUDP
             });
             return (false, null);
         }
-        if (receivedMessage.Content is DNSRecord)
+        if (receivedMessage.Content is JsonElement jsonElement)
         {
-            DNSRecord? dnsRecord = receivedMessage.Content as DNSRecord;
-            string? queryType = dnsRecord.Type;
-            string? queryName = dnsRecord.Name;
+            string? queryType = jsonElement.GetProperty("Type").GetString();
+            string? queryName = jsonElement.GetProperty("Name").GetString();
 
             if (string.IsNullOrEmpty(queryType) || string.IsNullOrEmpty(queryName))
             {
@@ -196,6 +195,12 @@ class ServerUDP
                 });
                 return (false, null);
             }
+            else{
+                Console.WriteLine($"ReceiveAndPrintDNS(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from Client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
+                return (true, receivedMessage);
+            }
+        }
+        else{
             Console.WriteLine("ReceiveAndPrintDNS(): Invalid DNSLookup request format.");
             SendMessage(new Message
             {
@@ -205,8 +210,6 @@ class ServerUDP
             });
             return (false, null);
         }
-        Console.WriteLine($"ReceiveAndPrintDNS(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from Client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
-        return (true, receivedMessage);
     }
 
 
