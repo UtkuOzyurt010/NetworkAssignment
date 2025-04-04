@@ -71,17 +71,17 @@ class ClientUDP
         {
             //TODO: [Create and send DNSLookup Message]
             if(!ClientUDP.SendDNSLookUp(dNSRecords[i])){
-                Console.WriteLine("SendDNSLookUp step failed. Ending protocol");
-                return false;
+                Console.WriteLine("SendDNSLookUp step failed. sending next DNSLookup");
+                continue;
             }
             //TODO: [Receive and print DNSLookupReply from server]
             if(!ClientUDP.ReceiveDNSLookupReply()){
-                Console.WriteLine("ReceiveDNSLookupReply step failed. Ending protocol");
-                return false;
+                Console.WriteLine("ReceiveDNSLookupReply step failed. sending next DNSLookup");
+                continue;
             }
             if(!ClientUDP.SendAck()){
                 Console.WriteLine("SendAck step failed. Ending protocol");
-                return false;
+                return false; //if this gets called it SHOULD work, so we cant skip to next DNS.
             }
         }
         
@@ -165,7 +165,6 @@ class ClientUDP
             Console.WriteLine($"ReceiveWelcome(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} a {receivedMessage.MsgType}: {receivedMessage}, which is unexpected");
             return false;
         }
-        
         
     }
      //TODO: [Send Acknowledgment to Server]
