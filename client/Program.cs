@@ -145,7 +145,28 @@ class ClientUDP
     //TODO: [Receive and print DNSLookupReply from server]
     public static bool ReceiveDNSLookupReply()
     {
-        return true;
+        byte[] buffer = new byte[1024];
+        int receivedBytesCount = clientSocket.ReceiveFrom(buffer, ref serverEndPoint);
+        string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytesCount);
+        Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
+        if(receivedMessage is null){
+            Console.WriteLine("ReceiveDNSLookupReply(): A message object was expected but not received.");
+            return false;
+        }
+        if(receivedMessage.MsgType == MessageType.DNSLookupReply){
+            Console.WriteLine($"ReceiveWelcome(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} a DNSLookupReply:{receivedMessage} ");
+            return true;
+        }
+        if(receivedMessage.MsgType == MessageType.Error){
+            Console.WriteLine($"ReceiveWelcome(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} an Error:{receivedMessage} ");
+            return false;
+        }
+        else{
+            Console.WriteLine($"ReceiveWelcome(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} a {receivedMessage.MsgType}: {receivedMessage}, which is unexpected");
+            return false;
+        }
+        
+        
     }
      //TODO: [Send Acknowledgment to Server]
     public static bool SendAck()
