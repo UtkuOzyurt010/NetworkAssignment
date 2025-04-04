@@ -69,7 +69,7 @@ class ClientUDP
             return false;
         }
 
-        for(int i = 0; i < dNSRecords.Length; i++)
+        for(int i = 0; i < 4; i++)
         {
             //TODO: [Create and send DNSLookup Message]
             if(!ClientUDP.SendDNSLookUp(dNSRecords[i])){
@@ -155,6 +155,11 @@ class ClientUDP
         Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
         if(receivedMessage is null){
             Console.WriteLine("ReceiveDNSLookupReply(): A message object was expected but not received.");
+            return false;
+        }
+        if (receivedMessage.MsgType == MessageType.End)
+        {
+            Console.WriteLine("ReceiveDNSLookupReply(): The received message was of type MessageType.End. Ending protocol.");
             return false;
         }
         if(receivedMessage.MsgType == MessageType.DNSLookupReply){
