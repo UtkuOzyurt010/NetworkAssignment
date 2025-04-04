@@ -54,9 +54,8 @@ class ServerUDP
         serverSocket.Bind(serverEndPoint);
         serverSocket.SendTimeout = 10000; // so it doesn't unexpectedly block
         serverSocket.ReceiveTimeout = 10000; // so it doesn't unexpectedly block
-        while (true) //keep the server running
-        {
-            // TODO:[Receive and print a received Message from the client]
+        
+        // TODO:[Receive and print a received Message from the client]
         /*  byte[] buffer = new byte[1024];
             int receivedBytes = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
             string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytes);
