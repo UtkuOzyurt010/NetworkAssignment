@@ -281,6 +281,7 @@ class ServerUDP
             MsgType = MessageType.End,
             Content = "End of communication"
         });
+        Console.WriteLine("SendEnd(): sending End Message");
         return sent;
     }
 }
