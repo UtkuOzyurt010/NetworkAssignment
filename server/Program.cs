@@ -39,7 +39,7 @@ class ServerUDP
     
     static EndPoint? clientEndPoint;
 
-    static int DNSMsgId = -1;
+    static int DNSMsgId;
 
 
     // TODO: [Read the JSON file and return the list of DNSRecords]
@@ -80,8 +80,8 @@ class ServerUDP
             Console.WriteLine("SendWelcome step failed. Ending protocol");
             return;
         }
-        int count = 0;
-        while (count < 4)
+        int AckCount = 0;
+        while (true)
         {
             // TODO:[Receive and print DNSLookup]
             (bool success, Message message) = ReceiveAndPrintDNS();
@@ -93,21 +93,25 @@ class ServerUDP
             // TODO:[Query the DNSRecord in Json file]
             // TODO:[If found Send DNSLookupReply containing the DNSRecord]
             // TODO:[If not found Send Error]
-            DNSMsgId = -1;
+            DNSMsgId = message.MsgId; //assigning message.MsgId to DNSMsgId to ensure that the same number is used.
             if (!ProcessDNSLookup(message))
             {
                 Console.WriteLine("ProcessDNSLookup step failed. Ending protocol");
-                DNSMsgId = -1;
                 return;
             }
             // TODO:[Receive Ack about correct DNSLookupReply from the client]
             if (!ReceiveAck())
             {
                 Console.WriteLine("ReceiveAck step failed. Ending protocol");
-                DNSMsgId = -1;
                 return;
             }
-            count++;
+            AckCount++;
+            if (AckCount == 4)
+            {
+                Console.WriteLine($"Received {AckCount} Acks. Sending End message to client.");
+                break;
+            }
+
         }
         SendEnd();
         Console.WriteLine("End of communication. Closing server socket.");
