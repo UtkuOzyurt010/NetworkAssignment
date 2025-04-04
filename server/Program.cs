@@ -179,10 +179,11 @@ class ServerUDP
             });
             return (false, null);
         }
-        if (receivedMessage.Content is JsonElement jsonElement)
+        if (receivedMessage.Content is DNSRecord)
         {
-            string? queryType = jsonElement.GetProperty("Type").GetString();
-            string? queryName = jsonElement.GetProperty("Name").GetString();
+            DNSRecord? dnsRecord = receivedMessage.Content as DNSRecord;
+            string? queryType = dnsRecord.Type;
+            string? queryName = dnsRecord.Name;
 
             if (string.IsNullOrEmpty(queryType) || string.IsNullOrEmpty(queryName))
             {

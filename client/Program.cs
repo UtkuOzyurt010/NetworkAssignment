@@ -18,30 +18,7 @@ class Program
             Console.WriteLine("start step (client initialization) failed. Ending protocol");
             return;
         }
-        if(!ClientUDP.SendHello()){
-            Console.WriteLine("SendHello step failed. Ending protocol");
-            return;
-        }
-        if(!ClientUDP.ReceiveWelcome()){
-            Console.WriteLine("ReceiveWelcome step failed. Ending protocol");
-            return;
-        }
-
-        // for(int i = Dns's to lookup)
-        // {
-            if(!ClientUDP.SendDNSLookUp()){
-                Console.WriteLine("SendDNSLookUp step failed. Ending protocol");
-                return;
-            }
-            if(!ClientUDP.ReceiveDNSLookupReply()){
-                Console.WriteLine("ReceiveDNSLookupReply step failed. Ending protocol");
-                return;
-            }
-        //}
-        if(!ClientUDP.ReceiveEnd()){
-            Console.WriteLine("ReceiveEnd step failed. Ending protocol");
-            return;
-        }
+        
 
     }
 }
@@ -76,19 +53,43 @@ class ClientUDP
 
         serverEndPoint = new IPEndPoint(IPAddress.Parse(setting.ServerIPAddress), setting.ServerPortNumber);
 
-        //server for some reason had 2 TODO receive steps. Im not sure what thats supposed to look like, so I just split them in two ReceiveFrom() steps.
-        //though the actual UDP protocol probably only receives HELLO. So I commented these out
-        
-        //{ “MsgId”: “1” , ”MsgType": "Hello", "Content": “Hello fromclient” }
-        // Message anyMessage = new Message();
-        // anyMessage.MsgId = 1;
-        // anyMessage.MsgType = MessageType.Hello;
-        // anyMessage.Content = "Hello fromclient";
-        // var anyJson = JsonSerializer.Serialize(anyMessage);
-        // clientSocket.SendTo(Encoding.UTF8.GetBytes(anyJson), serverEndPoint);
+        string dnsRecordsContent = File.ReadAllText("./SearchDNSRecords.json");
+        DNSRecord[] dNSRecords = JsonSerializer.Deserialize<DNSRecord[]>(dnsRecordsContent);
 
         //TODO: [Create and send HELLO]
+        if(!ClientUDP.SendHello()){
+            Console.WriteLine("SendHello step failed. Ending protocol");
+            return false;
+        }
+        //TODO: [Receive and print Welcome from server]
+        if(!ClientUDP.ReceiveWelcome()){
+            Console.WriteLine("ReceiveWelcome step failed. Ending protocol");
+            return false;
+        }
+
+        for(int i = 0; i < dNSRecords.Length; i++)
+        {
+            //TODO: [Create and send DNSLookup Message]
+            if(!ClientUDP.SendDNSLookUp(dNSRecords[i])){
+                Console.WriteLine("SendDNSLookUp step failed. Ending protocol");
+                return false;
+            }
+            //TODO: [Receive and print DNSLookupReply from server]
+            if(!ClientUDP.ReceiveDNSLookupReply()){
+                Console.WriteLine("ReceiveDNSLookupReply step failed. Ending protocol");
+                return false;
+            }
+            if(!ClientUDP.SendAck()){
+                Console.WriteLine("SendAck step failed. Ending protocol");
+                return false;
+            }
+        }
         
+
+        if(!ClientUDP.ReceiveEnd()){
+            Console.WriteLine("ReceiveEnd step failed. Ending protocol");
+            return false;
+        }
 
         return true;
 
@@ -128,8 +129,17 @@ class ClientUDP
     }
 
     //TODO: [Create and send DNSLookup Message]
-    public static bool SendDNSLookUp()
+    public static bool SendDNSLookUp(DNSRecord dnsRecord)
     {
+        Message DNSLookupMessage = new Message();
+        DNSLookupMessage.MsgId = 10;
+        DNSLookupMessage.MsgType = MessageType.DNSLookup;
+        DNSLookupMessage.Content = dnsRecord;
+        var DNSLookupMessageJson = JsonSerializer.Serialize(DNSLookupMessage);
+        int SentByesCount = clientSocket.SendTo(Encoding.UTF8.GetBytes(DNSLookupMessageJson), serverEndPoint);
+        // if(SentByesCount != expectedByesCount){ // to check if sending actually worked as expected
+        //     return false;
+        // }
         return true;
     }
     //TODO: [Receive and print DNSLookupReply from server]
@@ -144,6 +154,7 @@ class ClientUDP
     }
     //TODO: [Send next DNSLookup to server]
     // repeat the process until all DNSLoopkups (correct and incorrect onces) are sent to server and the replies with DNSLookupReply
+
 
     //TODO: [Receive and print End from server]
 
