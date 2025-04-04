@@ -39,6 +39,8 @@ class ServerUDP
     
     static EndPoint? clientEndPoint;
 
+    static int DNSMsgId = -1;
+
 
     // TODO: [Read the JSON file and return the list of DNSRecords]
     static List<DNSRecord>? DNSRecords = JsonSerializer.Deserialize<List<DNSRecord>>(File.ReadAllText("./DNSrecords.json"));
@@ -91,15 +93,18 @@ class ServerUDP
             // TODO:[Query the DNSRecord in Json file]
             // TODO:[If found Send DNSLookupReply containing the DNSRecord]
             // TODO:[If not found Send Error]
+            DNSMsgId = -1;
             if (!ProcessDNSLookup(message))
             {
                 Console.WriteLine("ProcessDNSLookup step failed. Ending protocol");
+                DNSMsgId = -1;
                 return;
             }
             // TODO:[Receive Ack about correct DNSLookupReply from the client]
             if (!ReceiveAck())
             {
                 Console.WriteLine("ReceiveAck step failed. Ending protocol");
+                DNSMsgId = -1;
                 return;
             }
             count++;
@@ -224,6 +229,7 @@ class ServerUDP
             if (record != null)
             {
                 Console.WriteLine("DNSRecord found: " + record.ToString() + "!");
+                DNSMsgId = message.MsgId;
                 SendMessage(new Message
                 {
                     MsgId = message.MsgId, // Keep original MsgId
@@ -255,7 +261,20 @@ class ServerUDP
             Console.WriteLine("ReceiveAck(): The received message was not of type MessageType.Ack.");
             return false;
         }
-        return true;
+        if(receivedMessage.Content is not string){
+            Console.WriteLine("ReceiveAck(): The received message did not have Content of type string");
+            return false;
+        }
+        else{
+            if(receivedMessage.Content.ToString() != DNSMsgId.ToString()){
+                Console.WriteLine("ReceiveAck(): The received MsgId did not match the MsgId of the DNSLookupReply that was sent.");
+                return false;
+            }
+            else{
+                Console.WriteLine("ReceiveAck(): The received MsgId matched the MsgId of the DNSLookupReply that was sent.");
+                return true;
+            }
+        }
     }
 
     // TODO:[If no further requests receieved send End to the client]
