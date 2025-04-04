@@ -109,12 +109,12 @@ class ServerUDP
             if (AckCount == 4)
             {
                 Console.WriteLine($"Received {AckCount} Acks. Sending End message to client.");
-                break;
+                SendEnd();
+                Console.WriteLine("End of communication, waiting for next client");
             }
-
+            
         }
-        SendEnd();
-        Console.WriteLine("End of communication. Closing server socket.");
+        
     }
 
     public static bool SendMessage(Message message)

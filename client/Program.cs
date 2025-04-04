@@ -69,7 +69,7 @@ class ClientUDP
             return false;
         }
 
-        for(int i = 0; i < dNSRecords.Length; i++)
+        for(int i = 0; i < 4; i++)
         {
             //TODO: [Create and send DNSLookup Message]
             if(!ClientUDP.SendDNSLookUp(dNSRecords[i])){
