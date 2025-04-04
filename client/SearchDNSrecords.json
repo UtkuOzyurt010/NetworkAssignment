@@ -12,41 +12,16 @@
     "TTL": 3600
   },
   {
-    "Type": "A",
+    "Type": "WRONGTYPE",
     "Name": "www.sample.com",
     "Value": "192.168.1.30",
     "TTL": 3600
   },
   {
     "Type": "A",
-    "Name": "www.mywebsite.com", 
+    "Name": "www.wrongaddress.com", 
     "Value": "192.168.1.40",
     "TTL": 3600
-  },
-  {
-    "Type": "A",
-    "Name": "www.customdomain.com",
-    "Value": "192.168.1.50",
-    "TTL": 3600
-  },
-  {
-    "Type": "MX",
-    "Name": "example.com",
-    "Value": "mail.example.com",
-    "Priority": 10,
-    "TTL": 3600
-  },
-  {
-    "Type": "MX",
-    "Name": "example.com",
-    "Value": "mail.example.com",
-    "Priority": 10,
-    "TTL": 3600
-  },
-  {
-    "Type": "A",
-    "Name": "mail.example.com",
-    "Value": "192.168.2.1",
-    "TTL": 3600
   }
+  
 ]

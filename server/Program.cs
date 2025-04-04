@@ -40,6 +40,8 @@ class ServerUDP
     static EndPoint? clientEndPoint;
 
     static int DNSMsgId;
+    static bool skipAck = false;
+    static bool endConnection = false;
 
 
     // TODO: [Read the JSON file and return the list of DNSRecords]
@@ -48,10 +50,31 @@ class ServerUDP
     public static void start() 
     {
         // TODO: [Create a socket and endpoints and bind it to the server IP address and port number]
-        serverEndPoint = new IPEndPoint(IPAddress.Parse(setting.ServerIPAddress), setting.ServerPortNumber);
-        serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-        clientEndPoint = new IPEndPoint(IPAddress.Parse(setting.ClientIPAddress), setting.ClientPortNumber);
-        serverSocket.Bind(serverEndPoint);
+        try{
+            serverEndPoint = new IPEndPoint(IPAddress.Parse(setting.ServerIPAddress), setting.ServerPortNumber);
+            serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            clientEndPoint = new IPEndPoint(IPAddress.Parse(setting.ClientIPAddress), setting.ClientPortNumber);
+            serverSocket.Bind(serverEndPoint);
+        }
+        catch (FormatException ex)
+        {
+            Console.WriteLine($"Invalid IP address format: {ex.Message}");
+            return;
+        }
+        catch (SocketException ex)
+        {
+            Console.WriteLine($"Socket error: {ex.Message}");
+            return;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Unexpected error: {ex.Message}");
+            return;
+        }
+        if(serverEndPoint is null || serverSocket is null || clientEndPoint is null){
+            Console.WriteLine("for some unexpected reason, a server/client endpoint or the server socket was null after iniliaization");
+        }
+
         //serverSocket.SendTimeout = 10000; // so it doesn't unexpectedly block
         //serverSocket.ReceiveTimeout = 10000; // so it doesn't unexpectedly block
 
@@ -68,52 +91,72 @@ class ServerUDP
             }
 
             Console.WriteLine($"Received from {clientEndPoint}: {receivedMessage.MsgType}"); */
-
-        // TODO:[Receive and print Hello]
-        if (!ReceiveHello())
+        while(true)
         {
-            Console.WriteLine("ReceiveHello step failed. Ending protocol");
-            return;
-        }
-        // TODO:[Send Welcome to the client]
-        if (!SendWelcome())
-        {
-            Console.WriteLine("SendWelcome step failed. Ending protocol");
-            return;
-        }
-        int AckCount = 0;
-        while (true)
-        {
-            // TODO:[Receive and print DNSLookup]
-            (bool success, Message message) = ReceiveAndPrintDNS();
-            if (!success)
+            // TODO:[Receive and print Hello]
+            if (!ReceiveHello())
             {
-                Console.WriteLine("ReceiveAndPrintDNS step failed. Ending protocol");
-                return;
+                Console.WriteLine("ReceiveHello step failed. Ending protocol");
+                break;
             }
-            // TODO:[Query the DNSRecord in Json file]
-            // TODO:[If found Send DNSLookupReply containing the DNSRecord]
-            // TODO:[If not found Send Error]
-            DNSMsgId = message.MsgId; //assigning message.MsgId to DNSMsgId to ensure that the same number is used.
-            if (!ProcessDNSLookup(message))
+            // TODO:[Send Welcome to the client]
+            if (!SendWelcome())
             {
-                Console.WriteLine("ProcessDNSLookup step failed. Ending protocol");
-                return;
+                Console.WriteLine("SendWelcome step failed. Ending protocol");
+                break;
             }
-            // TODO:[Receive Ack about correct DNSLookupReply from the client]
-            if (!ReceiveAck())
+            int ResponseCount = 0;
+            while (true)
             {
-                Console.WriteLine("ReceiveAck step failed. Ending protocol");
-                return;
+                // TODO:[Receive and print DNSLookup]
+                (bool success, Message message) = ReceiveAndPrintDNS();
+                if (!success)
+                {
+                    Console.WriteLine("ReceiveAndPrintDNS step failed. trying next DNSLookup.");
+                    endConnection = true;
+                    ResponseCount++;
+                    continue;
+                }
+                // TODO:[Query the DNSRecord in Json file]
+                // TODO:[If found Send DNSLookupReply containing the DNSRecord]
+                // TODO:[If not found Send Error]
+                DNSMsgId = message.MsgId; //assigning message.MsgId to DNSMsgId to ensure that the same number is used.
+                if (!ProcessDNSLookup(message))
+                {
+                    Console.WriteLine("ProcessDNSLookup step failed. trying next DNSLookup.");
+                    endConnection = true;
+                    ResponseCount++;
+                    continue;
+                }
+                // TODO:[Receive Ack about correct DNSLookupReply from the client]
+                if (!skipAck)
+                { 
+                    if(!ReceiveAck())
+                    {
+                        Console.WriteLine("ReceiveAck step failed. trying next DNSLookup.");
+                        continue;
+                    }
+                }
+                else if(skipAck) endConnection = true;
+                ResponseCount++;
+                if (ResponseCount == 4)
+                {
+                    if(endConnection){
+                        endConnection = false;
+                        Console.WriteLine($"There was an invalid DNSLookup. Ending DNSQuery.");
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Received {ResponseCount} Acks. Sending End message to client.");
+                    SendEnd();
+                    Console.WriteLine("End of communication, waiting for next client");
+                    break;
+                    }
+                    
+                }
+                
             }
-            AckCount++;
-            if (AckCount == 4)
-            {
-                Console.WriteLine($"Received {AckCount} Acks. Sending End message to client.");
-                SendEnd();
-                Console.WriteLine("End of communication, waiting for next client");
-            }
-            
         }
         
     }
@@ -147,7 +190,7 @@ class ServerUDP
             Console.WriteLine("ReceiveHello(): The received message was not of type MessageType.Hello.");
             return false;
         }
-        Console.WriteLine($"ReceiveHello(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedString} ");
+        Console.WriteLine($"ReceiveHello(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage.Content} ");
         return true;
     }
 
@@ -206,7 +249,7 @@ class ServerUDP
                 return (false, null);
             }
             else{
-                Console.WriteLine($"ReceiveAndPrintDNS(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from Client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
+                Console.WriteLine($"ReceiveAndPrintDNS(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from Client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage.Content} ");
                 return (true, receivedMessage);
             }
         }
@@ -233,27 +276,38 @@ class ServerUDP
                                         d.Name.Equals(queryName, StringComparison.OrdinalIgnoreCase));
             if (record != null)
             {
-                Console.WriteLine("DNSRecord found: " + record.ToString() + "!");
+                Console.WriteLine("ProcessDNSLookup(): DNSRecord found: " + record.ToString() + "!");
                 DNSMsgId = message.MsgId;
-                SendMessage(new Message
+                Message dnsLookupReply = new Message
                 {
                     MsgId = message.MsgId, // Keep original MsgId
                     MsgType = MessageType.DNSLookupReply,
                     Content = record
-                });
+                };
+                SendMessage(dnsLookupReply);
+                Console.WriteLine($"ProcessDNSLookup(): Sent DNSLookupReply: {dnsLookupReply.Content} ");
+                return true;
             }
             else
             {
-                Console.WriteLine("No matching DNSRecord found!");
-                SendMessage(new Message
+                Console.WriteLine("ProcessDNSLookup(): No matching DNSRecord found!");
+                Message errorMessage = new Message
                 {
                     MsgId = message.MsgId, // Keep original MsgId
                     MsgType = MessageType.Error,
-                    Content = $"No DNS record found for {queryName} with type {queryType}"
-                });
+                    Content = $"ProcessDNSLookup(): No DNS record found for {queryName} with type {queryType}"
+                };
+                SendMessage(errorMessage);
+                Console.WriteLine($"ProcessDNSLookup(): ErrorMessage sent: {errorMessage.Content}");
+                skipAck = true;
+                return false;
             }
         }
-        return true;
+        else {
+            Console.WriteLine("ProcessDNSLookup(): message.Content was not of the correct type");
+            return false;
+        }
+        
     }
 
     public static bool ReceiveAck()
@@ -262,8 +316,8 @@ class ServerUDP
         int receivedBytes = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
         string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytes);
         Message? receivedMessage = JsonSerializer.Deserialize<Message>(receivedString);
-        if(receivedMessage.MsgType != MessageType.Ack){
-            Console.WriteLine("ReceiveAck(): The received message was not of type MessageType.Ack.");
+        if(receivedMessage.MsgType == MessageType.Error){
+            Console.WriteLine($"ReceiveAck(): The received message was an ErrorMessage: {receivedMessage.Content}. Ending protocol");
             return false;
         }
         if(receivedMessage.Content.ToString() != DNSMsgId.ToString()){

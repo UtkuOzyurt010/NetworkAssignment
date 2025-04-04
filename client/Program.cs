@@ -14,12 +14,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        if(!ClientUDP.start()){
-            Console.WriteLine("start step (client initialization) failed. Ending protocol");
-            return;
-        }
-        
-
+        ClientUDP.start();
     }
 }
 
@@ -46,14 +41,38 @@ class ClientUDP
     static int sentDNSMsgId = -1;
     static int receivedDNSMsgId = -2;
 
-    public static bool start()
+    static bool skipAck = false;
+    static bool skipEnd = false;
+
+    public static void start()
     {
         //TODO: [Create endpoints and socket]
-        clientEndPoint = new IPEndPoint(IPAddress.Parse(setting.ClientIPAddress), setting.ClientPortNumber);
-        clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-        clientSocket.Bind(clientEndPoint);
+        try{
+            clientEndPoint = new IPEndPoint(IPAddress.Parse(setting.ClientIPAddress), setting.ClientPortNumber);
+            clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            clientSocket.Bind(clientEndPoint);
 
-        serverEndPoint = new IPEndPoint(IPAddress.Parse(setting.ServerIPAddress), setting.ServerPortNumber);
+            serverEndPoint = new IPEndPoint(IPAddress.Parse(setting.ServerIPAddress), setting.ServerPortNumber);
+        }
+        catch (FormatException ex)
+        {
+            Console.WriteLine($"Invalid IP address format: {ex.Message}");
+            return;
+        }
+        catch (SocketException ex)
+        {
+            Console.WriteLine($"Socket error: {ex.Message}");
+            return;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Unexpected error: {ex.Message}");
+            return;
+        }
+        if(clientEndPoint is null || clientSocket is null || serverEndPoint is null){
+            Console.WriteLine("for some unexpected reason, a server/client endpoint or the client socket was null after iniliaization");
+        }
+
 
         string dnsRecordsContent = File.ReadAllText("./SearchDNSRecords.json");
         DNSRecord[] dNSRecords = JsonSerializer.Deserialize<DNSRecord[]>(dnsRecordsContent);
@@ -61,12 +80,12 @@ class ClientUDP
         //TODO: [Create and send HELLO]
         if(!ClientUDP.SendHello()){
             Console.WriteLine("SendHello step failed. Ending protocol");
-            return false;
+            return;
         }
         //TODO: [Receive and print Welcome from server]
         if(!ClientUDP.ReceiveWelcome()){
             Console.WriteLine("ReceiveWelcome step failed. Ending protocol");
-            return false;
+            return;
         }
 
         for(int i = 0; i < 4; i++)
@@ -81,20 +100,31 @@ class ClientUDP
                 Console.WriteLine("ReceiveDNSLookupReply step failed. sending next DNSLookup");
                 continue;
             }
-            if(!ClientUDP.SendAck()){
-                Console.WriteLine("SendAck step failed. Ending protocol");
-                return false; //if this gets called it SHOULD work, so we cant skip to next DNS.
+            if(!skipAck)
+            {
+                if(!ClientUDP.SendAck()){
+                    Console.WriteLine("SendAck step failed. Ending protocol");
+                    return; //if this gets called it SHOULD work, so we cant skip to next DNS.
+                }
+            }
+            if(skipAck){
+                skipAck = false;
+                skipEnd = true;
+            }
+            
+        }
+        if(!skipEnd)
+        {
+            if(!ClientUDP.ReceiveEnd()){
+            Console.WriteLine("ReceiveEnd step failed. Ending protocol");
+            return;
             }
         }
-        
-
-        if(!ClientUDP.ReceiveEnd()){
-            Console.WriteLine("ReceiveEnd step failed. Ending protocol");
-            return false;
+        else{
+            Console.WriteLine("Sent all DNSLookups, but did not receive an END message, because we didnt send enough expected acknowledgements. Closing connection.");
+            skipEnd = false;
+            return;
         }
-
-        return true;
-
     }
 
     //TODO: [Create and send HELLO]
@@ -126,7 +156,7 @@ class ClientUDP
             Console.WriteLine("ReceiveWelcome(): The received message was not of type MessageType.Welcome.");
             return false;
         }
-        Console.WriteLine($"ReceiveWelcome(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} a message:{receivedMessage} ");
+        Console.WriteLine($"ReceiveWelcome(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} a message:{receivedMessage.Content} ");
         return true;
     }
 
@@ -169,7 +199,8 @@ class ClientUDP
         }
         if(receivedMessage.MsgType == MessageType.Error){
             Console.WriteLine($"ReceiveDNSLookupReply(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} an Error:{receivedMessage.Content} ");
-            return false;
+            skipAck = true; //if receiving an error, dont send an acknowledgement
+            return true; //continue sending next one. the server handles with lack of acknowledgement.
         }
         else{
             Console.WriteLine($"ReceiveDNSLookupReply(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} a {receivedMessage.MsgType}: {receivedMessage}, which is unexpected");
