@@ -52,9 +52,10 @@ class ServerUDP
         serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         clientEndPoint = new IPEndPoint(IPAddress.Parse(setting.ClientIPAddress), setting.ClientPortNumber);
         serverSocket.Bind(serverEndPoint);
-        serverSocket.SendTimeout = 10000; // so it doesn't unexpectedly block
-        serverSocket.ReceiveTimeout = 10000; // so it doesn't unexpectedly block
-        
+        //serverSocket.SendTimeout = 10000; // so it doesn't unexpectedly block
+        //serverSocket.ReceiveTimeout = 10000; // so it doesn't unexpectedly block
+
+
         // TODO:[Receive and print a received Message from the client]
         /*  byte[] buffer = new byte[1024];
             int receivedBytes = serverSocket.ReceiveFrom(buffer, ref clientEndPoint);
