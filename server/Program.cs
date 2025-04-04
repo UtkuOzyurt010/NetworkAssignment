@@ -205,7 +205,7 @@ class ServerUDP
                 return (false, null);
             }
             else{
-                Console.WriteLine($"ReceiveAndPrintDNS(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from Client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedMessage} ");
+                Console.WriteLine($"ReceiveAndPrintDNS(): Server {setting.ServerIPAddress}:{setting.ServerPortNumber} received from Client {setting.ClientIPAddress}:{setting.ClientPortNumber} a message:{receivedString} ");
                 return (true, receivedMessage);
             }
         }
