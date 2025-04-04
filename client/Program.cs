@@ -206,7 +206,25 @@ class ClientUDP
 
     public static bool ReceiveEnd()
     {
-        return true;
+        byte[] buffer = new byte[1024];
+        int receivedBytesCount = clientSocket.ReceiveFrom(buffer, ref serverEndPoint);
+        string receivedString = Encoding.UTF8.GetString(buffer, 0, receivedBytesCount);
+        Message? endMessage = JsonSerializer.Deserialize<Message>(receivedString);
+        if(endMessage == null){
+            Console.WriteLine("ReceiveEnd(): received message was null");
+            return false;
+        }
+        if (endMessage.MsgType != MessageType.End){
+            Console.WriteLine($"ReceiveEnd(): received message did not have MessageType.End, but MessageType {endMessage.MsgType}");
+            return false;
+
+        }
+        if (endMessage.MsgType == MessageType.End){
+            Console.WriteLine("ReceiveEnd(): Succesfully received message with MessageType.End. Ending protocol.");
+            return true;
+
+        }
+        return false;
     }
 
 
