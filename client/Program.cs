@@ -43,6 +43,8 @@ class ClientUDP
     static Socket clientSocket;
     static EndPoint serverEndPoint;
 
+    static int sentDNSMsgId = -1;
+    static int receivedDNSMsgId = -2;
 
     public static bool start()
     {
@@ -132,7 +134,8 @@ class ClientUDP
     public static bool SendDNSLookUp(DNSRecord dnsRecord)
     {
         Message DNSLookupMessage = new Message();
-        DNSLookupMessage.MsgId = 10;
+        DNSLookupMessage.MsgId = 33;
+        sentDNSMsgId = DNSLookupMessage.MsgId;
         DNSLookupMessage.MsgType = MessageType.DNSLookup;
         DNSLookupMessage.Content = dnsRecord;
         var DNSLookupMessageJson = JsonSerializer.Serialize(DNSLookupMessage);
@@ -140,6 +143,7 @@ class ClientUDP
         // if(SentByesCount != expectedByesCount){ // to check if sending actually worked as expected
         //     return false;
         // }
+        Console.WriteLine($"sent DNSLookupMessage : {DNSLookupMessage.Content}");
         return true;
     }
     //TODO: [Receive and print DNSLookupReply from server]
@@ -155,6 +159,7 @@ class ClientUDP
         }
         if(receivedMessage.MsgType == MessageType.DNSLookupReply){
             Console.WriteLine($"ReceiveDNSLookupReply(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} a DNSLookupReply:{receivedMessage.Content} ");
+            receivedDNSMsgId = receivedMessage.MsgId;
             return true;
         }
         if(receivedMessage.MsgType == MessageType.Error){
@@ -170,7 +175,28 @@ class ClientUDP
      //TODO: [Send Acknowledgment to Server]
     public static bool SendAck()
     {
-        return true;
+        if(receivedDNSMsgId == sentDNSMsgId){
+            Console.WriteLine($"the MsgId of received DNSLookupReply({receivedDNSMsgId}) matches the MsgId of the sent DNSLookUp({sentDNSMsgId}). sending acknowledgement");
+            Message ackMessage = new Message();
+            ackMessage.MsgId = 40;
+            ackMessage.MsgType = MessageType.Ack;
+            ackMessage.Content = receivedDNSMsgId;
+            var ackMessageJson = JsonSerializer.Serialize(ackMessage);
+            int SentByesCount = clientSocket.SendTo(Encoding.UTF8.GetBytes(ackMessageJson), serverEndPoint);
+            // if(SentByesCount != expectedByesCount){ // to check if sending actually worked as expected
+            //     return false;
+            // }
+            Console.WriteLine($"sent Acknowledgement : {ackMessage.Content}");
+
+            sentDNSMsgId = -1;
+            receivedDNSMsgId = -2;
+            return true;
+
+        }
+        else{
+            Console.WriteLine($"the MsgId of received DNSLookupReply({receivedDNSMsgId}) did not match the MsgId of the sent DNSLookUp({sentDNSMsgId}). NOT sending acknowledgement");
+            return false;
+        }
     }
     //TODO: [Send next DNSLookup to server]
     // repeat the process until all DNSLoopkups (correct and incorrect onces) are sent to server and the replies with DNSLookupReply
