@@ -69,54 +69,53 @@ class ServerUDP
 
             Console.WriteLine($"Received from {clientEndPoint}: {receivedMessage.MsgType}"); */
 
-            // TODO:[Receive and print Hello]
-            if (!ReceiveHello())
-            {
-                Console.WriteLine("ReceiveHello step failed. Ending protocol");
-                return;
-            }
-            // TODO:[Send Welcome to the client]
-            if (!SendWelcome())
-            {
-                Console.WriteLine("SendWelcome step failed. Ending protocol");
-                return;
-            }
-            int AckCount = 0;
-            while (true)
-            {
-                // TODO:[Receive and print DNSLookup]
-                (bool success, Message message) = ReceiveAndPrintDNS();
-                if (!success)
-                {
-                    Console.WriteLine("ReceiveAndPrintDNS step failed. Ending protocol");
-                    return;
-                }
-                // TODO:[Query the DNSRecord in Json file]
-                // TODO:[If found Send DNSLookupReply containing the DNSRecord]
-                // TODO:[If not found Send Error]
-                DNSMsgId = message.MsgId; //assigning message.MsgId to DNSMsgId to ensure that the same number is used.
-                if (!ProcessDNSLookup(message))
-                {
-                    Console.WriteLine("ProcessDNSLookup step failed. Ending protocol");
-                    return;
-                }
-                // TODO:[Receive Ack about correct DNSLookupReply from the client]
-                if (!ReceiveAck())
-                {
-                    Console.WriteLine("ReceiveAck step failed. Ending protocol");
-                    return;
-                }
-                AckCount++;
-                if (AckCount == 4)
-                {
-                    Console.WriteLine($"Received {AckCount} Acks. Sending End message to client.");
-                    break;
-                }
-
-            }
-            SendEnd();
-            Console.WriteLine("End of communication. Awaiting next client.");
+        // TODO:[Receive and print Hello]
+        if (!ReceiveHello())
+        {
+            Console.WriteLine("ReceiveHello step failed. Ending protocol");
+            return;
         }
+        // TODO:[Send Welcome to the client]
+        if (!SendWelcome())
+        {
+            Console.WriteLine("SendWelcome step failed. Ending protocol");
+            return;
+        }
+        int AckCount = 0;
+        while (true)
+        {
+            // TODO:[Receive and print DNSLookup]
+            (bool success, Message message) = ReceiveAndPrintDNS();
+            if (!success)
+            {
+                Console.WriteLine("ReceiveAndPrintDNS step failed. Ending protocol");
+                return;
+            }
+            // TODO:[Query the DNSRecord in Json file]
+            // TODO:[If found Send DNSLookupReply containing the DNSRecord]
+            // TODO:[If not found Send Error]
+            DNSMsgId = message.MsgId; //assigning message.MsgId to DNSMsgId to ensure that the same number is used.
+            if (!ProcessDNSLookup(message))
+            {
+                Console.WriteLine("ProcessDNSLookup step failed. Ending protocol");
+                return;
+            }
+            // TODO:[Receive Ack about correct DNSLookupReply from the client]
+            if (!ReceiveAck())
+            {
+                Console.WriteLine("ReceiveAck step failed. Ending protocol");
+                return;
+            }
+            AckCount++;
+            if (AckCount == 4)
+            {
+                Console.WriteLine($"Received {AckCount} Acks. Sending End message to client.");
+                SendEnd();
+                Console.WriteLine("End of communication, waiting for next client");
+            }
+            
+        }
+        
     }
 
     public static bool SendMessage(Message message)
@@ -287,6 +286,7 @@ class ServerUDP
             MsgType = MessageType.End,
             Content = "End of communication"
         });
+        Console.WriteLine("SendEnd(): sending End Message");
         return sent;
     }
 }
