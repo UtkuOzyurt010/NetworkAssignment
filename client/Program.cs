@@ -154,15 +154,15 @@ class ClientUDP
             return false;
         }
         if(receivedMessage.MsgType == MessageType.DNSLookupReply){
-            Console.WriteLine($"ReceiveWelcome(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} a DNSLookupReply:{receivedMessage} ");
+            Console.WriteLine($"ReceiveDNSLookupReply(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} a DNSLookupReply:{receivedMessage.Content} ");
             return true;
         }
         if(receivedMessage.MsgType == MessageType.Error){
-            Console.WriteLine($"ReceiveWelcome(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} an Error:{receivedMessage} ");
+            Console.WriteLine($"ReceiveDNSLookupReply(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} an Error:{receivedMessage.Content} ");
             return false;
         }
         else{
-            Console.WriteLine($"ReceiveWelcome(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} a {receivedMessage.MsgType}: {receivedMessage}, which is unexpected");
+            Console.WriteLine($"ReceiveDNSLookupReply(): Client {setting.ClientIPAddress}:{setting.ClientPortNumber} received from server {setting.ServerIPAddress}:{setting.ServerPortNumber} a {receivedMessage.MsgType}: {receivedMessage}, which is unexpected");
             return false;
         }
         
